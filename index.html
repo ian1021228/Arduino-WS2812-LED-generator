@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino WS2812 LED 程式碼生成器</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 Inter 字體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* 基本樣式設定 */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* 載入中動畫 */
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #22d3ee; /* 淺藍色 */
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        /* 程式碼區塊的美化 */
+        pre {
+            white-space: pre-wrap;       /* 自動換行 */
+            word-wrap: break-word;     /* 斷開長單詞 */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-4">
+
+    <!-- 
+      ================================================================
+      輸入頁面 (Input Page)
+      ================================================================
+    -->
+    <div id="inputPage" class="container mx-auto max-w-4xl w-full">
+        <div class="bg-gray-800 p-6 md:p-8 rounded-2xl shadow-2xl relative">
+            <!-- 設定按鈕 -->
+            <button id="settingsButtonInput" class="absolute top-4 right-4 text-cyan-400 hover:text-cyan-300 p-2 rounded-lg text-sm font-medium" title="設定 API 金鑰">
+                設定 API Key
+            </button>
+            
+            <!-- 標題 -->
+            <h1 class="text-3xl font-bold text-center text-cyan-400">Arduino WS2812 LED 程式碼生成器</h1>
+            <p class="text-gray-300 text-center mb-6 mt-2">輸入您想要的效果，AI 將為您生成 Arduino C++ 程式碼。</p>
+
+            <!-- 輸入表單 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <!-- 左側：輸入 -->
+                <div class="space-y-4">
+                    <div>
+                        <label for="effectDescription" class="block text-sm font-medium text-gray-300 mb-2">1. 想要的燈光效果</label>
+                        <textarea id="effectDescription" rows="5" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 text-white focus:ring-cyan-500 focus:border-cyan-500" placeholder="例如：彩虹旋轉效果、藍色呼吸燈、流星追逐..."></textarea>
+                    </div>
+                    <div>
+                        <label for="ledCount" class="block text-sm font-medium text-gray-300 mb-2">2. LED 燈泡數量</label>
+                        <input type="number" id="ledCount" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 text-white focus:ring-cyan-500 focus:border-cyan-500" value="30">
+                    </div>
+                    <div>
+                        <label for="ledPin" class="block text-sm font-medium text-gray-300 mb-2">3. LED 腳位 (DATA)</label>
+                        <input type="text" id="ledPin" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 text-white focus:ring-cyan-500 focus:border-cyan-500" value="6">
+                    </div>
+                    <div>
+                        <label for="buttonPin" class="block text-sm font-medium text-gray-300 mb-2">4. 按鈕腳位 (選填)</label>
+                        <input type="text" id="buttonPin" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 text-white focus:ring-cyan-500 focus:border-cyan-500" placeholder="例如：2 (會使用 INPUT_PULLUP)">
+                    </div>
+                    <div>
+                        <label for="photoresistorPin" class="block text-sm font-medium text-gray-300 mb-2">5. 光敏電阻腳位 (選填)</label>
+                        <input type="text" id="photoresistorPin" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 text-white focus:ring-cyan-500 focus:border-cyan-500" placeholder="例如：A0 (類比輸入)">
+                    </div>
+                    <button id="generateButton" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out disabled:opacity-50">
+                        生成程式碼
+                    </button>
+                </div>
+
+                <!-- 右側：說明 -->
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="font-semibold text-lg mb-2">使用說明</h3>
+                    <ul class="list-disc list-inside text-gray-300 space-y-1 text-sm">
+                        <li>請具體描述您的燈光效果。</li>
+                        <li>AI 將生成使用 <code class="bg-gray-800 px-1 rounded">Adafruit_NeoPixel</code> 函式庫的程式碼。</li>
+                        <li>若提供按鈕/光敏腳位，AI 會嘗試整合它們。</li>
+                        <li>生成後請務必在 Arduino IDE 中檢查並編譯。</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 錯誤訊息區 -->
+            <div id="errorMessage" class="hidden bg-red-800 border border-red-700 text-red-100 px-4 py-3 rounded-lg mb-4" role="alert">
+                <strong class="font-bold">發生錯誤：</strong>
+                <span id="errorText" class="block sm:inline whitespace-pre-wrap"></span>
+            </div>
+            
+            <!-- 頁尾 -->
+            <div class="text-center text-xs text-gray-400 bg-gray-700 rounded-lg py-2 mt-6">
+                created by 王禹硯
+            </div>
+        </div>
+    </div>
+
+    <!-- 
+      ================================================================
+      結果頁面 (Output Page)
+      ================================================================
+    -->
+    <div id="outputPage" class="hidden container mx-auto max-w-7xl w-full">
+        <div class="bg-gray-800 p-6 md:p-8 rounded-2xl shadow-2xl min-h-[90vh] relative">
+            <!-- 設定按鈕 -->
+            <button id="settingsButtonOutput" class="absolute top-4 right-4 text-cyan-400 hover:text-cyan-300 p-2 rounded-lg text-sm font-medium" title="設定 API 金鑰">
+                設定 API Key
+            </button>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                <!-- 左側：程式碼顯示 -->
+                <div class="md:col-span-2">
+                    <h2 class="text-2xl font-semibold mb-4 text-cyan-300">生成的程式碼</h2>
+                    
+                    <!-- 控制按鈕列 -->
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <button id="downloadButton" class="bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition">下載 (.ino)</button>
+                        <button id="copyButton" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition">複製程式碼</button>
+                    </div>
+
+                    <!-- 預覽模式按鈕 -->
+                    <div class="flex space-x-2 mb-4">
+                        <span class="text-sm text-gray-400 py-2">預覽模式:</span>
+                        <button id="desktopButton" class="preview-toggle flex-1 bg-cyan-600 text-white py-2 px-3 rounded-lg text-sm transition">電腦</button>
+                        <button id="tabletButton" class="preview-toggle flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 px-3 rounded-lg text-sm transition">平板</button>
+                        <button id="mobileButton" class="preview-toggle flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 px-3 rounded-lg text-sm transition">手機</button>
+                    </div>
+
+                    <!-- 預覽容器 -->
+                    <div id="previewContainer" class="w-full max-w-full mx-auto transition-all duration-300 ease-in-out">
+                        <div class="relative bg-gray-900 rounded-lg shadow-inner overflow-hidden max-h-[60vh] overflow-y-auto">
+                            <pre class="p-4 text-sm text-gray-100"><code id="codeOutput" class="language-cpp"></code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右側：AI 修改 -->
+                <div class="md:col-span-1">
+                    <div class="bg-gray-700 p-4 rounded-lg sticky top-6">
+                        <h3 class="text-xl font-semibold mb-3">AI 協助修改</h3>
+                        <p class="text-sm text-gray-300 mb-3">對目前的程式碼不滿意？輸入您的修改需求：</p>
+                        <textarea id="modificationRequest" rows="5" class="w-full bg-gray-800 border border-gray-600 rounded-lg p-3 text-white focus:ring-cyan-500 focus:border-cyan-500" placeholder="例如：請讓燈光變亮一點、請讓呼吸燈的速度變慢、換成紅色..."></textarea>
+                        
+                        <button id="modifyButton" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg transition mt-3 disabled:opacity-50">
+                            要求修改
+                        </button>
+                        
+                        <button id="restartButton" class="w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition mt-3">
+                            重新生成 (返回首頁)
+                        </button>
+                        
+                        <!-- 錯誤訊息區 (輸出頁) -->
+                        <div id="errorMessageOutput" class="hidden bg-red-800 border border-red-700 text-red-100 px-4 py-3 rounded-lg mt-3" role="alert">
+                            <strong class="font-bold">修改失敗：</strong>
+                            <span id="errorTextOutput" class="block sm:inline whitespace-pre-wrap"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 頁尾 -->
+            <div class="text-center text-xs text-gray-400 bg-gray-700 rounded-lg py-2 mt-8">
+                created by 王禹硯
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 
+      ================================================================
+      全螢幕載入中 (Loading Overlay)
+      ================================================================
+    -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 flex flex-col items-center justify-center z-50 backdrop-blur-sm">
+        <div class="spinner"></div>
+        <p class="mt-4 text-gray-200 text-lg">AI 正在思考中...</p>
+    </div>
+
+    <!-- 
+      ================================================================
+      API 金鑰設定彈窗 (Settings Modal)
+      ================================================================
+    -->
+    <div id="settingsModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-700 p-6 rounded-lg max-w-md w-full shadow-2xl">
+            <h2 class="text-xl font-bold mb-4">API 金鑰設定</h2>
+            <p class="text-gray-300 mb-4 text-sm">此應用程式需要您自己的 Google AI API 金鑰才能運作。</p>
+            <div>
+                <label for="apiKeyInput" class="block text-sm font-medium text-gray-300 mb-2">您的 Google AI API Key</label>
+                <input type="password" id="apiKeyInput" class="w-full bg-gray-800 border border-gray-600 rounded-lg p-3 text-white focus:ring-cyan-500 focus:border-cyan-500" placeholder="貼上您的 API 金鑰">
+            </div>
+            <p id="apiKeyError" class="text-red-400 text-sm mt-2 hidden"></p>
+            
+            <button id="howToApiKeyButton" class="text-left text-cyan-400 hover:underline text-sm mt-3">如何設定 API Key?</button>
+            
+            <div class="flex gap-4 mt-6">
+                <button id="saveApiKeyButton" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg transition">儲存金鑰</button>
+                <button id="closeSettingsButton" class="w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition">關閉</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 
+      ================================================================
+      如何取得 API 金鑰彈窗 (How-To Modal)
+      ================================================================
+    -->
+    <div id="howToModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-60 p-4"> <!-- z-60 to be on top -->
+        <div class="bg-gray-800 p-6 rounded-lg max-w-lg w-full shadow-2xl">
+            <h2 class="text-xl font-bold mb-4">如何取得 Google AI API Key？</h2>
+            <div class="text-gray-300 space-y-3 text-sm">
+                <p>您需要一個免費的 Google AI API 金鑰才能使用此工具。請依照以下步驟取得：</p>
+                <ol class="list-decimal list-inside space-y-2">
+                    <li>前往 <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-cyan-400 hover:underline">Google AI Studio (點此開啟)</a>。</li>
+                    <li>使用您的 Google 帳戶登入。</li>
+                    <li>登入後，點擊頁面上的「<strong>Get API Key</strong>」（取得 API 金鑰）或「<strong>Create API Key</strong>」（建立 API 金鑰）。</li>
+                    <li>系統可能會要求您建立一個新的「專案」（Project），請為它命名（例如："Arduino Project"）。</li>
+                    <li>建立專案後，您的新 API 金鑰將會顯示。它會以 "AIza..." 開頭。</li>
+                    <li>點擊「複製」按鈕將金鑰複製到剪貼簿。</li>
+                    <li>返回此頁面，在「API 金鑰設定」視窗中貼上您的金鑰並儲存。</li>
+                </ol>
+            </div>
+            <div class="flex justify-end mt-6">
+                <button id="closeHowToButton" class="w-full md:w-auto bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-lg transition">關閉</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 
+      ================================================================
+      JavaScript (內嵌)
+      ================================================================
+    -->
+    <script>
+        // --- DOM 元素 (頁面) ---
+        const inputPage = document.getElementById('inputPage');
+        const outputPage = document.getElementById('outputPage');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        // --- DOM 元素 (輸入頁) ---
+        const effectDescriptionEl = document.getElementById('effectDescription');
+        const ledCountEl = document.getElementById('ledCount');
+        const ledPinEl = document.getElementById('ledPin');
+        const buttonPinEl = document.getElementById('buttonPin');
+        const photoresistorPinEl = document.getElementById('photoresistorPin');
+        const generateButton = document.getElementById('generateButton');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+
+        // --- DOM 元素 (輸出頁) ---
+        const codeOutput = document.getElementById('codeOutput');
+        const copyButton = document.getElementById('copyButton');
+        const downloadButton = document.getElementById('downloadButton');
+        const restartButton = document.getElementById('restartButton');
+        const modifyButton = document.getElementById('modifyButton');
+        const modificationRequestEl = document.getElementById('modificationRequest');
+        
+        const previewContainer = document.getElementById('previewContainer');
+        const desktopButton = document.getElementById('desktopButton');
+        const tabletButton = document.getElementById('tabletButton');
+        const mobileButton = document.getElementById('mobileButton');
+        const previewToggles = document.querySelectorAll('.preview-toggle');
+        
+        const errorMessageOutput = document.getElementById('errorMessageOutput');
+        const errorTextOutput = document.getElementById('errorTextOutput');
+
+        // --- DOM 元素 (設定) ---
+        const settingsModal = document.getElementById('settingsModal');
+        const settingsButtonInput = document.getElementById('settingsButtonInput');
+        const settingsButtonOutput = document.getElementById('settingsButtonOutput');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const saveApiKeyButton = document.getElementById('saveApiKeyButton');
+        const closeSettingsButton = document.getElementById('closeSettingsButton');
+        const apiKeyError = document.getElementById('apiKeyError');
+
+        // --- DOM 元素 (如何設定 Modal) ---
+        const howToModal = document.getElementById('howToModal');
+        const howToApiKeyButton = document.getElementById('howToApiKeyButton');
+        const closeHowToButton = document.getElementById('closeHowToButton');
+
+
+        // --- API 設定 ---
+        let userApiKey = ''; // 金鑰將從 localStorage 載入
+
+        // --- 事件監聽 ---
+        generateButton.addEventListener('click', handleGenerateClick);
+        modifyButton.addEventListener('click', handleModifyClick);
+        restartButton.addEventListener('click', handleRestartClick);
+        copyButton.addEventListener('click', copyCodeToClipboard);
+        downloadButton.addEventListener('click', handleDownloadClick);
+        
+        // 設定彈窗
+        settingsButtonInput.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+        settingsButtonOutput.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+        closeSettingsButton.addEventListener('click', () => settingsModal.classList.add('hidden'));
+        saveApiKeyButton.addEventListener('click', saveApiKey);
+        
+        // 如何設定彈窗
+        howToApiKeyButton.addEventListener('click', () => howToModal.classList.remove('hidden'));
+        closeHowToButton.addEventListener('click', () => howToModal.classList.add('hidden'));
+        
+        // 預覽模式切換
+        desktopButton.addEventListener('click', () => setPreviewMode('desktop'));
+        tabletButton.addEventListener('click', () => setPreviewMode('tablet'));
+        mobileButton.addEventListener('click', () => setPreviewMode('mobile'));
+
+        // --- 核心功能函式 ---
+
+        /**
+         * 處理"生成"按鈕點擊 (首次生成)
+         */
+        async function handleGenerateClick() {
+            const effectDescription = effectDescriptionEl.value;
+            const ledCount = ledCountEl.value;
+            const ledPin = ledPinEl.value || '6'; // 預設為 '6'
+            const buttonPin = buttonPinEl.value;
+            const photoresistorPin = photoresistorPinEl.value;
+
+            // 1. 驗證輸入
+            if (!effectDescription.trim() || !ledCount) {
+                showError("請同時輸入「燈光效果」和「LED 數量」。", 'input');
+                return;
+            }
+
+            // 2. 檢查 API Key (REMOVED - 讓 API 呼叫自行失敗並由錯誤處理程序接管)
+            // if (!userApiKey) {
+            //     showError("API 金鑰未設定。請點擊右上角設定圖示輸入您的 API 金鑰。", 'input');
+            //     settingsModal.classList.remove('hidden'); // 顯示設定彈窗
+            //     return; // 停止執行
+            // }
+
+            // 3. 設定載入狀態
+            setLoadingState(true);
+            hideError('input');
+            hideError('output');
+
+            // 3. 建構 Gemini 提示 (首次生成)
+            const systemPrompt = `You are an expert Arduino programmer specializing in WS2812 (NeoPixel) LEDs.
+Your task is to generate complete, runnable Arduino C++ code (.ino) based on a user's effect description and LED count.
+
+RULES:
+1.  ALWAYS include the Adafruit NeoPixel library: #include <Adafruit_NeoPixel.h>
+2.  Define LED_PIN (use the user-provided pin, default 6) and LED_COUNT (use the user-provided number).
+3.  Initialize the strip correctly: Adafruit_NeoPixel strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+4.  Include strip.begin(); and strip.show(); (or strip.clear();) in the setup() function.
+5.  The main effect logic MUST be in the loop() function.
+6.  Use strip.setPixelColor(i, strip.Color(R, G, B)) and strip.show() to update LEDs.
+7.  For animations, use delay() appropriately.
+8.  The code MUST be a single, complete, compilable block.
+9.  Do NOT include any explanations, markdown (like \`\`\`cpp), or conversational text. Only output the raw C++ code.
+10. If a button pin (e.g., BUTTON_PIN 2) is provided, define it and use it in the logic (e.g., change effect, cycle colors). Use pinMode(BUTTON_PIN, INPUT_PULLUP); and check for digitalRead(BUTTON_PIN) == LOW.
+11. If a photoresistor pin (e.g., PHOTORESISTOR_PIN A0) is provided, define it and use analogRead() to modify the effect (e.g., control brightness, speed).`;
+
+            let userQuery = `Generate a complete Arduino sketch for ${ledCount} WS2812 LEDs, using LED_PIN ${ledPin}. The effect is: "${effectDescription}".`;
+
+            if (buttonPin) {
+                userQuery += ` ALSO, incorporate a button on pin ${buttonPin} to control the effect.`;
+            }
+            if (photoresistorPin) {
+                userQuery += ` ALSO, incorporate a photoresistor on analog pin ${photoresistorPin} to control the effect (e.g., brightness or speed).`;
+            }
+
+            // 4. 呼叫 API
+            try {
+                const generatedCode = await callGeminiAPI(systemPrompt, userQuery);
+                
+                // 5. 顯示結果頁面
+                codeOutput.textContent = generatedCode;
+                inputPage.classList.add('hidden');
+                outputPage.classList.remove('hidden');
+                setPreviewMode('desktop'); // 預設為電腦模式
+
+            } catch (error) {
+                console.error("API Error:", error);
+                let userMessage = `生成失敗：${error.message}。請稍後再試。`;
+                if (error.message.includes("Failed to fetch")) {
+                    userMessage = "生成失敗：無法連線至 AI 伺服器。\n1. 請檢查您的網路連線。\n2. 請暫時停用廣告攔截器 (AdBlock) 或瀏覽器擴充功能。\n3. 如果您是從本機 'file://' 路徑開啟，將無法運作，請改用 GitHub Pages 網址或本機伺服器。\n4. 請確認您的 API 金鑰已啟用，且沒有設定 'HTTP 推薦網址' 限制。";
+                }
+                showError(userMessage, 'input');
+            } finally {
+                // 6. 恢復按鈕狀態
+                setLoadingState(false);
+            }
+        }
+
+        /**
+         * 處理"修改"按鈕點擊
+         */
+        async function handleModifyClick() {
+            const modificationRequest = modificationRequestEl.value;
+            const currentCode = codeOutput.textContent;
+
+            // 1. 驗證輸入
+            if (!modificationRequest.trim()) {
+                showError("請輸入您的修改需求。", 'output');
+                return;
+            }
+
+            // 2. 檢查 API Key (REMOVED)
+            // if (!userApiKey) {
+            //     showError("API 金鑰未設定。請點擊右上角設定圖示輸入您的 API 金鑰。", 'output');
+            //     settingsModal.classList.remove('hidden'); // 顯示設定彈窗
+            //     return; // 停止執行
+            // }
+
+            // 3. 設定載入狀態
+            setLoadingState(true);
+            hideError('output');
+
+            // 3. 建構 Gemini 提示 (修改)
+            const systemPromptModify = `You are an expert Arduino programmer. Your task is to modify the provided Arduino C++ code based on the user's request.
+
+RULES:
+1.  Output ONLY the new, complete, runnable C++ code.
+2.  Do NOT include any explanations, markdown (like \`\`\`cpp), or conversational text.
+3.  Ensure all previous functionalities (like button/photoresistor logic) are preserved unless the user specifically asks to change or remove them.
+4.  The new code must be a single, complete block.`;
+
+            const userQueryModify = `Here is the current Arduino code:
+\`\`\`cpp
+${currentCode}
+\`\`\`
+
+Here is my request to modify the code:
+"${modificationRequest}"
+
+Please provide the new, complete Arduino code.`;
+
+            // 4. 呼叫 API
+            try {
+                const newCode = await callGeminiAPI(systemPromptModify, userQueryModify);
+                
+                // 5. 更新程式碼
+                codeOutput.textContent = newCode;
+                modificationRequestEl.value = ''; // 清空修改欄
+
+            } catch (error) {
+                console.error("API Error (Modify):", error);
+                let userMessage = `修改失敗：${error.message}。`;
+                 if (error.message.includes("Failed to fetch")) {
+                    userMessage = "修改失敗：無法連線至 AI 伺服器。\n1. 請檢查您的網路連線。\n2. 請暫時停用廣告攔截器 (AdBlock) 或瀏覽器擴充功能。\n3. 如果您是從本機 'file://' 路徑開啟，將無法運作，請改用 GitHub Pages 網址或本機伺服器。\n4. 請確認您的 API 金鑰已啟用，且沒有設定 'HTTP 推薦網址' 限制。";
+                }
+                showError(userMessage, 'output');
+            } finally {
+                // 6. 恢復按鈕狀態
+                setLoadingState(false);
+            }
+        }
+
+        /**
+         * 處理"重新生成"按鈕點擊
+         */
+        function handleRestartClick() {
+            outputPage.classList.add('hidden');
+            inputPage.classList.remove('hidden');
+            // (可選) 清空輸入欄位
+            // effectDescriptionEl.value = '';
+            // ...
+        }
+
+        /**
+         * 呼叫 Gemini API (包含重試機制)
+         */
+        async function callGeminiAPI(systemPrompt, userQuery) {
+            // 基礎 URL
+            const baseUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent`;
+            
+            // 只有在 userApiKey (從 localStorage 載入) 存在時才附加 key
+            const apiUrl = userApiKey 
+                ? `${baseUrl}?key=${userApiKey}`
+                : baseUrl;
+            
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+            };
+
+            const response = await fetchWithRetry(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                mode: 'cors' // 明確設定 CORS 模式
+            }, 3); // 最多重試 3 次
+
+            if (!response.ok) {
+                if (response.status === 403 || response.status === 401) {
+                     throw new Error(`API 請求失敗，狀態碼：${response.status}。請檢查您的 API 金鑰是否正確且已啟用。`);
+                }
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`API 請求失敗，狀態碼：${response.status}. ${errorData.error?.message || ''}`);
+            }
+
+            const result = await response.json();
+            const code = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+            if (!code) {
+                throw new Error("API 未返回有效的程式碼。");
+            }
+            
+            // 清理 AI 可能返回的 markdown 標記
+            return code.trim().replace(/^```cpp\n?|```$/g, '');
+        }
+
+        /**
+         * 帶有指數退避的 Fetch 重試函式
+         */
+        async function fetchWithRetry(url, options, maxRetries = 3, retryDelay = 1000) {
+            let attempt = 0;
+            while (attempt < maxRetries) {
+                try {
+                    const response = await fetch(url, options);
+                    // 成功或客戶端認證/授權錯誤 (401, 403)，停止重試
+                    if (response.ok || (response.status >= 400 && response.status < 500)) {
+                        return response; 
+                    }
+                    // 伺服器錯誤 (5xx)，觸發重試
+                    throw new Error(`Server error: ${response.status}`);
+                } catch (error) {
+                    attempt++;
+                    if (attempt >= maxRetries) {
+                        throw error; 
+                    }
+                    const delay = retryDelay * Math.pow(2, attempt - 1);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+
+
+        // --- 輔助函式 ---
+
+        /**
+         * 儲存 API Key 到 localStorage
+         */
+        function saveApiKey() {
+            const key = apiKeyInput.value.trim();
+            if (key) {
+                localStorage.setItem('userGoogleApiKey', key);
+                userApiKey = key;
+                settingsModal.classList.add('hidden');
+                apiKeyError.classList.add('hidden');
+            } else {
+                apiKeyError.textContent = '請輸入有效的 API 金鑰。';
+                apiKeyError.classList.remove('hidden');
+            }
+        }
+
+        /**
+         * 從 localStorage 載入 API Key
+         */
+        function loadApiKey() {
+            const storedKey = localStorage.getItem('userGoogleApiKey');
+            if (storedKey) {
+                userApiKey = storedKey;
+                apiKeyInput.value = storedKey; // 預先填入以便編輯
+            } 
+            // else {
+            //     // 如果是第一次使用，自動顯示設定彈窗 (REMOVED - 避免在 Canvas 中造成干擾)
+            //     settingsModal.classList.remove('hidden');
+            // }
+        }
+
+        /**
+         * 設定載入狀態 (控制全螢幕遮罩)
+         */
+        function setLoadingState(isLoading) {
+            generateButton.disabled = isLoading;
+            modifyButton.disabled = isLoading;
+            if (isLoading) {
+                loadingOverlay.classList.remove('hidden');
+                loadingOverlay.classList.add('flex');
+            } else {
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.remove('flex');
+            }
+        }
+
+        /**
+         * 顯示錯誤訊息 (在指定頁面)
+         */
+        function showError(message, page = 'input') {
+            if (page === 'input') {
+                errorText.textContent = message;
+                errorMessage.classList.remove('hidden');
+            } else {
+                errorTextOutput.textContent = message;
+                errorMessageOutput.classList.remove('hidden');
+            }
+        }
+
+        /**
+         * 隱藏錯誤訊息
+         */
+        function hideError(page = 'input') {
+            if (page === 'input') {
+                errorMessage.classList.add('hidden');
+            } else {
+                errorMessageOutput.classList.add('hidden');
+            }
+        }
+
+        /**
+         * 複製程式碼到剪貼簿
+         */
+        function copyCodeToClipboard() {
+            const code = codeOutput.textContent;
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = code;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            
+            try {
+                document.execCommand('copy');
+                copyButton.textContent = '已複製！';
+                setTimeout(() => {
+                    copyButton.textContent = '複製程式碼';
+                }, 2000);
+            } catch (err) {
+                console.error('複製失敗: ', err);
+                copyButton.textContent = '複製失敗';
+                 setTimeout(() => {
+                    copyButton.textContent = '複製程式碼';
+                }, 2000);
+            }
+            
+            document.body.removeChild(tempTextArea);
+        }
+
+        /**
+         * 處理"下載"按鈕點擊
+         */
+        function handleDownloadClick() {
+            const code = codeOutput.textContent;
+            const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'arduino_led_code.ino'; // Arduino 檔案副檔名
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        /**
+         * 設定預覽模式 (切換寬度)
+         */
+        function setPreviewMode(mode) {
+            // 重設所有按鈕樣式
+            previewToggles.forEach(button => {
+                button.classList.remove('bg-cyan-600');
+                button.classList.add('bg-gray-600', 'hover:bg-gray-500');
+            });
+
+            // 清除現有 max-width
+            previewContainer.classList.remove('max-w-full', 'max-w-[768px]', 'max-w-[420px]');
+
+            // 設定新寬度和按鈕樣式
+            if (mode === 'desktop') {
+                previewContainer.classList.add('max-w-full');
+                desktopButton.classList.add('bg-cyan-600');
+                desktopButton.classList.remove('bg-gray-600', 'hover:bg-gray-500');
+            } else if (mode === 'tablet') {
+                previewContainer.classList.add('max-w-[768px]');
+                tabletButton.classList.add('bg-cyan-600');
+                tabletButton.classList.remove('bg-gray-600', 'hover:bg-gray-500');
+            } else if (mode === 'mobile') {
+                previewContainer.classList.add('max-w-[420px]');
+                mobileButton.classList.add('bg-cyan-600');
+                mobileButton.classList.remove('bg-gray-600', 'hover:bg-gray-500');
+            }
+        }
+        
+        // --- 啟動 ---
+        // 頁面載入時嘗試讀取儲存的 API Key
+        loadApiKey();
+
+    </script>
+</body>
+</html>
